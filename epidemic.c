@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <time.h>
 
 /* We can build a tree of who was infected by who; but we don't yet
    have any way of reading this data out, so I've turned it off for
@@ -168,7 +169,7 @@ static double default_age_data[] = {
 #define Age_Susceptibility(_i_) (age_data[(_i_)*4 + 2])
 #define Age_Mortality(_i_)      (age_data[(_i_)*4 + 3])
 
-static double spreader_default_data[] = {
+static double default_spreader_data[] = {
 // grade, proportion, R,   distance
    0,     .1,         0.1, 0,
    1,     .4,         0.9, 1,
@@ -369,6 +370,8 @@ int main(int argc, char **argv) {
   counts_t previous_counts = {0, 0, 0, 0, 0, 0, 0};
 
   FILE *outstream = stdout;
+
+  clock_t begin = clock();
   
   while (1) {
     int option_index = 0;
@@ -432,7 +435,7 @@ int main(int argc, char **argv) {
           exit(1);
       }
   } else {
-      spreader_data = spreader_default_data;
+      spreader_data = default_spreader_data;
       spreader_grades = 4;
   }
   double total_spreader_proportions = 0;
@@ -520,7 +523,8 @@ int main(int argc, char **argv) {
   
   fprintf(outstream, "Day,Susceptible,Incubating,Carrying,Ill,Recovered,Vaccinated,Died\n");
 
-  for (int day = 0; day < cycles; day++) {
+  unsigned int day;
+  for (day = 0; day < cycles; day++) {
       for (int i = 0; i < population.population_size; i++) {
           switch (population.population[i].state) {
           case NOBODY:
@@ -608,6 +612,19 @@ int main(int argc, char **argv) {
       fclose(outstream);
   }
   free(population.population);
-  free(age_data);
-  free(spreader_data);
+  if (age_data != default_age_data) {
+      free(age_data);
+  }
+  if (spreader_data != default_spreader_data) {
+      free(spreader_data);
+  }
+  clock_t end = clock();
+  double time_used = (double)(end-begin)/CLOCKS_PER_SEC;
+  printf("%g seconds used; %gmsec per day for a population of %d\n",
+         time_used,
+         1000.0 * time_used/(double)day, population.population_size);
+  printf("%gusec per head of population; %gnsec per head per day\n",
+         1000000.0 * time_used/(double)population.population_size,
+         1000000000.0 * time_used/((double)population.population_size * (double)day));
+  printf("grid occupied %d bytes\n", population.population_size*sizeof(person_t));
 }
