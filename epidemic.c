@@ -9,6 +9,12 @@
 #include <ctype.h>
 #include <fcntl.h>
 
+/* We can build a tree of who was infected by who; but we don't yet
+   have any way of reading this data out, so I've turned it off for
+   now.  In the real world, someone might be infected by more than one
+   person, of course, so this may not be that useful. */
+// #define TRACING 1
+
 /* Definitions for the bitfield sizes which also have other things
    based on them, so they can be changed easily and be tracked by
    their dependents: */
@@ -21,7 +27,9 @@ typedef struct person_t {
   unsigned int state          : 3;
   unsigned int spreader_grade : SPREADER_GRADE_BITS;
   unsigned int age            : 7;
+#ifdef TRACING
   unsigned int infected_by;
+#endif
 } person_t;
 
 /* Some counts that we will maintain as people move between states */
@@ -191,6 +199,10 @@ struct option long_options_data[] = {
 
 struct option *long_options = long_options_data;
 
+/* We make up a couple of temporary arrays for looking up scaled
+   random numbers and returning values in a given distribution (for
+   spreader grades, and ages).  This is the number of points in these
+   arrays. */
 #define DISTRIBUTION_POINTS 4096
 
 /* Read a CSV file into an array of doubles.
@@ -328,6 +340,9 @@ static void infect(unsigned int who, population_grid_t *population, counts_t *co
                 if (neighbour->state == SUSCEPTIBLE) {
                     neighbour->state = INCUBATING;
                     neighbour->days_in_state = 0;
+#ifdef TRACING
+                    neighbour->infected_by = who;
+#endif
                     counts->susceptible--;
                     counts->incubating++;
                 }
@@ -427,6 +442,8 @@ int main(int argc, char **argv) {
       total_spreader_proportions += Spreader_Proportion(i);
   }
 
+  /* Make up an array for looking up random numbers and yielding
+     spreader grades in the given distribution. */
   unsigned int *grade_distributor = (unsigned int*)malloc(DISTRIBUTION_POINTS*sizeof(unsigned int));
   unsigned int top_grade_slot = 0;
   for (unsigned int i = 0; i < spreader_grades; i++) {
@@ -458,6 +475,9 @@ int main(int argc, char **argv) {
   for (unsigned int i = 0; i < ages; i++) {
       total_age_proportions += Age_Number(i);
   }
+
+  /* Make up an array for looking up random numbers and yielding ages
+     in the given distribution. */
   unsigned int *age_distributor = (unsigned int*)malloc(DISTRIBUTION_POINTS*sizeof(unsigned int));
   unsigned int top_age_slot = 0;
   for (unsigned int i = 0; i < ages; i++) {
@@ -483,6 +503,9 @@ int main(int argc, char **argv) {
     population.population[i].age = age_distributor[(unsigned int)(drand48() * top_age_slot)];
   }
 
+  free(age_distributor);
+  free(grade_distributor);
+  
   /* Seed with a few infectious people: */
   for (int i = 0; i < starting_cases; i++) {
       person_t *person = &population.population[(int)(drand48() * population.population_size)];
@@ -584,4 +607,7 @@ int main(int argc, char **argv) {
   if (outstream != stdout) {
       fclose(outstream);
   }
+  free(population.population);
+  free(age_data);
+  free(spreader_data);
 }
