@@ -183,7 +183,7 @@ static double default_spreader_data[] = {
 #define Spreader_R(_i_)          (spreader_data[(_i_)*4 + 2])
 #define Spreader_Radius(_i_)     (spreader_data[(_i_)*4 + 3])
 
-static const char *short_options = "a:c:g:hi:o:p:R:s:v";
+static const char *short_options = "a:c:g:hi:I:o:p:R:s:v";
 
 struct option long_options_data[] = {
   {"age", required_argument, 0, 'a'},
@@ -194,6 +194,7 @@ struct option long_options_data[] = {
   {"reproduction", required_argument, 0, 'R'},
   {"starting", required_argument, 0, 's'},
   {"infectious", required_argument, 0, 'i'},
+  {"interventions", required_argument, 0, 'I'},
   {"output", required_argument, 0, 'o'},
   {"verbose", no_argument, 0, 'v'},
   {0, 0, 0, 0}
@@ -354,6 +355,12 @@ static void infect(unsigned int who, population_grid_t *population, counts_t *co
     }
 }
 
+#define Intervention_Day(_i_)          (interventions_data[(_i_) * interventions_columns + 0])
+#define Intervention_Vaccinations(_i_) (interventions_data[(_i_) * interventions_columns + 1])
+#define Intervention_R(_i_, _j_)       (interventions_data[(_i_) * interventions_columns + 2 + (2*(_j_) + 0)])
+#define Intervention_Radius(_i_, _j_)  (interventions_data[(_i_) * interventions_columns + 2 + (2*(_j_) + 1)])
+#define Intervention_Grades()          ((interventions_columns - 2) / 2)
+
 int main(int argc, char **argv) {
   int verbose = 0;
   int cycles = 365;
@@ -365,6 +372,7 @@ int main(int argc, char **argv) {
 
   char *spreader_grades_file = NULL;
   char *age_distribution_file = NULL;
+  char *interventions_file = NULL;
 
   population_grid_t population = {1024 * 1024, 1024, 1024};
   counts_t counts = {0, 0, 0, 0, 0, 0, 0};
@@ -436,6 +444,9 @@ int main(int argc, char **argv) {
         break;
     case 'o':
         outstream = fopen(optarg, "w");
+        break;
+    case 'I':
+        interventions_file = optarg;
         break;
     case 'v':
         verbose = 1;
@@ -533,7 +544,7 @@ int main(int argc, char **argv) {
 
   free(age_distributor);
   free(grade_distributor);
-  
+
   /* Seed with a few infectious people: */
   for (int i = 0; i < starting_cases; i++) {
       person_t *person = &population.population[(int)(drand48() * population.population_size)];
@@ -541,6 +552,14 @@ int main(int argc, char **argv) {
       person->state = INCUBATING;
   }
 
+  double *interventions_data = NULL;
+  unsigned int interventions_count = 0;
+  unsigned int intervention_index = 0;
+  unsigned int interventions_columns;
+  if (interventions_file) {
+      read_table(interventions_file, &interventions_data, &interventions_count, &interventions_columns, 1);
+  }
+  
   counts.incubating = starting_cases;
   counts.susceptible = population.population_size - starting_cases;
 
@@ -550,6 +569,25 @@ int main(int argc, char **argv) {
 
   unsigned int day;
   for (day = 0; day < cycles; day++) {
+      if ((double)day > Intervention_Day(intervention_index)) {
+          unsigned int vaccinations = Intervention_Vaccinations(intervention_index);
+          for (unsigned int i = 0; i < vaccinations; i++) {
+              unsigned int who = (unsigned int)(drand48() * population.population_size);
+              if (population.population[who].state == SUSCEPTIBLE) {
+                  population.population[who].state = VACCINATED;
+                  counts.susceptible--;
+                  counts.vaccinated++;
+              }
+          }
+          unsigned int affected_grades = Intervention_Grades();
+          for (unsigned int igrade = 0;
+               igrade < affected_grades;
+               igrade++) {
+              Spreader_R(igrade) = Intervention_R(intervention_index, igrade);
+              Spreader_Radius(igrade) = Intervention_Radius(intervention_index, igrade);
+          }
+          intervention_index++;
+      }
       for (int i = 0; i < population.population_size; i++) {
           switch (population.population[i].state) {
           case NOBODY:
@@ -635,6 +673,9 @@ int main(int argc, char **argv) {
   }
   if (outstream != stdout) {
       fclose(outstream);
+  }
+  if (interventions_data) {
+      free(interventions_data);
   }
   free(population.population);
   if (age_data != default_age_data) {
