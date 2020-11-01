@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -173,7 +173,7 @@ static double spreader_default_data[] = {
 #define Spreader_R(_i_)          (spreader_data[(_i_)*4 + 2])
 #define Spreader_Radius(_i_)     (spreader_data[(_i_)*4 + 3])
 
-static const char *short_options = "a:c:g:hi:p:R:s:v";
+static const char *short_options = "a:c:g:hi:o:p:R:s:v";
 
 struct option long_options_data[] = {
   {"age", required_argument, 0, 'a'},
@@ -184,6 +184,7 @@ struct option long_options_data[] = {
   {"reproduction", required_argument, 0, 'R'},
   {"starting", required_argument, 0, 's'},
   {"infectious", required_argument, 0, 'i'},
+  {"output", required_argument, 0, 'o'},
   {"verbose", no_argument, 0, 'v'},
   {0, 0, 0, 0}
 };
@@ -352,6 +353,8 @@ int main(int argc, char **argv) {
   counts_t counts = {0, 0, 0, 0, 0, 0, 0};
   counts_t previous_counts = {0, 0, 0, 0, 0, 0, 0};
 
+  FILE *outstream = stdout;
+  
   while (1) {
     int option_index = 0;
     char opt = getopt_long(argc, argv,
@@ -387,6 +390,9 @@ int main(int argc, char **argv) {
         break;
     case 'g':
         spreader_grades_file = optarg;
+        break;
+    case 'o':
+        outstream = fopen(optarg, "w");
         break;
     case 'v':
       verbose = 1;
@@ -489,7 +495,7 @@ int main(int argc, char **argv) {
 
   unsigned int stable_days = 0;
   
-  printf("Day,Susceptible,Incubating,Carrying,Ill,Recovered,Vaccinated,Died\n");
+  fprintf(outstream, "Day,Susceptible,Incubating,Carrying,Ill,Recovered,Vaccinated,Died\n");
 
   for (int day = 0; day < cycles; day++) {
       for (int i = 0; i < population.population_size; i++) {
@@ -552,10 +558,10 @@ int main(int argc, char **argv) {
            + counts.recovered + counts.vaccinated + counts.died) != population.population_size) {
           printf("Warning: miscount: ");
       }
-      printf("%d,%d,%d,%d,%d,%d,%d,%d\n",
-	     day,
-	     counts.susceptible, counts.incubating, counts.carrying, counts.ill,
-	     counts.recovered, counts.vaccinated, counts.died);
+      fprintf(outstream, "%d,%d,%d,%d,%d,%d,%d,%d\n",
+              day,
+              counts.susceptible, counts.incubating, counts.carrying, counts.ill,
+              counts.recovered, counts.vaccinated, counts.died);
 
 
       if (counts.susceptible == previous_counts.susceptible
@@ -574,5 +580,8 @@ int main(int argc, char **argv) {
           stable_days = 0;
       }
       previous_counts = counts;
+  }
+  if (outstream != stdout) {
+      fclose(outstream);
   }
 }
