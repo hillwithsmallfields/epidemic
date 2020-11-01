@@ -569,7 +569,8 @@ int main(int argc, char **argv) {
 
   unsigned int day;
   for (day = 0; day < cycles; day++) {
-      if ((double)day > Intervention_Day(intervention_index)) {
+      if ((interventions_data != NULL)
+          && ((double)day > Intervention_Day(intervention_index))) {
           unsigned int vaccinations = Intervention_Vaccinations(intervention_index);
           for (unsigned int i = 0; i < vaccinations; i++) {
               unsigned int who = (unsigned int)(drand48() * population.population_size);
