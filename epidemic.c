@@ -62,95 +62,97 @@ typedef struct population_grid_t {
 #define N_SPREADER_GRADES Beyond(SPREADER_GRADE_BITS)
 
 /* We need to know the age distribution.  Here is one I extracted from
-   a spreadsheet on a UK government website. */
+   a spreadsheet on a UK government website.  The risk of death is
+   from the Chinese values on the chart at
+   https://ourworldindata.org/mortality-risk-covid#case-fatality-rate-of-covid-19-by-age */
 static double default_age_data[] = {
   // age, number in population, risk of catching, relative risk of death
-  0, 712544, 1, 1,
-  1, 731552, 1, 1,
-  2, 719903, 1, 1,
-  3, 728775, 1, 1,
-  4, 749716, 1, 1,
-  5, 755165, 1, 1,
-  6, 781296, 1, 1,
-  7, 790079, 1, 1,
-  8, 776092, 1, 1,
-  9, 770442, 1, 1,
-  10, 780027, 1, 1,
-  11, 762286, 1, 1,
-  12, 752187, 1, 1,
-  13, 755586, 1, 1,
-  14, 725424, 1, 1,
-  15, 721461, 1, 1,
-  16, 722828, 1, 1,
-  17, 736831, 1, 1,
-  18, 729094, 1, 1,
-  19, 699477, 1, 1,
-  20, 665903, 1, 1,
-  21, 659726, 1, 1,
-  22, 689704, 1, 1,
-  23, 713489, 1, 1,
-  24, 740562, 1, 1,
-  25, 793528, 1, 1,
-  26, 842028, 1, 1,
-  27, 874752, 1, 1,
-  28, 869510, 1, 1,
-  29, 898289, 1, 1,
-  30, 909243, 1, 1,
-  31, 933090, 1, 1,
-  32, 937354, 1, 1,
-  33, 948525, 1, 1,
-  34, 941315, 1, 1,
-  35, 924873, 1, 1,
-  36, 902650, 1, 1,
-  37, 883249, 1, 1,
-  38, 849669, 1, 1,
-  39, 833083, 1, 1,
-  40, 820064, 1, 1,
-  41, 794797, 1, 1,
-  42, 770328, 1, 1,
-  43, 749944, 1, 1,
-  44, 756457, 1, 1,
-  45, 749170, 1, 1,
-  46, 738565, 1, 1,
-  47, 747581, 1, 1,
-  48, 768527, 1, 1,
-  49, 793618, 1, 1,
-  50, 848926, 1, 1,
-  51, 905094, 1, 1,
-  52, 728019, 1, 1,
-  53, 713446, 1, 1,
-  54, 706140, 1, 1,
-  55, 676500, 1, 1,
-  56, 614232, 1, 1,
-  57, 574955, 1, 1,
-  58, 599775, 1, 1,
-  59, 602612, 1, 1,
-  60, 596737, 1, 1,
-  61, 583322, 1, 1,
-  62, 568631, 1, 1,
-  63, 552998, 1, 1,
-  64, 533180, 1, 1,
-  65, 529311, 1, 1,
-  66, 534019, 1, 1,
-  67, 535086, 1, 1,
-  68, 523636, 1, 1,
-  69, 505858, 1, 1,
-  70, 487741, 1, 1,
-  71, 483403, 1, 1,
-  72, 476279, 1, 1,
-  73, 458484, 1, 1,
-  74, 445259, 1, 1,
-  75, 431429, 1, 1,
-  76, 433618, 1, 1,
-  77, 433515, 1, 1,
-  78, 419602, 1, 1,
-  79, 284208, 1, 1,
-  80, 244002, 1, 1,
-  81, 252357, 1, 1,
-  82, 248742, 1, 1,
-  83, 242710, 1, 1,
-  84, 221012, 1, 1,
-  85, 1079747, 1, 1
+  0, 712544, 1, 0,
+  1, 731552, 1, 0,
+  2, 719903, 1, 0,
+  3, 728775, 1, 0,
+  4, 749716, 1, 0,
+  5, 755165, 1, 0,
+  6, 781296, 1, 0,
+  7, 790079, 1, 0,
+  8, 776092, 1, 0,
+  9, 770442, 1, 0,
+  10, 780027, 1, 0.002,
+  11, 762286, 1, 0.002,
+  12, 752187, 1, 0.002,
+  13, 755586, 1, 0.002,
+  14, 725424, 1, 0.002,
+  15, 721461, 1, 0.002,
+  16, 722828, 1, 0.002,
+  17, 736831, 1, 0.002,
+  18, 729094, 1, 0.002,
+  19, 699477, 1, 0.002,
+  20, 665903, 1, 0.002,
+  21, 659726, 1, 0.002,
+  22, 689704, 1, 0.002,
+  23, 713489, 1, 0.002,
+  24, 740562, 1, 0.002,
+  25, 793528, 1, 0.002,
+  26, 842028, 1, 0.002,
+  27, 874752, 1, 0.002,
+  28, 869510, 1, 0.002,
+  29, 898289, 1, 0.002,
+  30, 909243, 1, 0.002,
+  31, 933090, 1, 0.002,
+  32, 937354, 1, 0.002,
+  33, 948525, 1, 0.002,
+  34, 941315, 1, 0.002,
+  35, 924873, 1, 0.002,
+  36, 902650, 1, 0.002,
+  37, 883249, 1, 0.002,
+  38, 849669, 1, 0.002,
+  39, 833083, 1, 0.002,
+  40, 820064, 1, 0.004,
+  41, 794797, 1, 0.004,
+  42, 770328, 1, 0.004,
+  43, 749944, 1, 0.004,
+  44, 756457, 1, 0.004,
+  45, 749170, 1, 0.004,
+  46, 738565, 1, 0.004,
+  47, 747581, 1, 0.004,
+  48, 768527, 1, 0.004,
+  49, 793618, 1, 0.004,
+  50, 848926, 1, 0.013,
+  51, 905094, 1, 0.013,
+  52, 728019, 1, 0.013,
+  53, 713446, 1, 0.013,
+  54, 706140, 1, 0.013,
+  55, 676500, 1, 0.013,
+  56, 614232, 1, 0.013,
+  57, 574955, 1, 0.013,
+  58, 599775, 1, 0.013,
+  59, 602612, 1, 0.013,
+  60, 596737, 1, 0.036,
+  61, 583322, 1, 0.036,
+  62, 568631, 1, 0.036,
+  63, 552998, 1, 0.036,
+  64, 533180, 1, 0.036,
+  65, 529311, 1, 0.036,
+  66, 534019, 1, 0.036,
+  67, 535086, 1, 0.036,
+  68, 523636, 1, 0.036,
+  69, 505858, 1, 0.036,
+  70, 487741, 1, 0.08,
+  71, 483403, 1, 0.08,
+  72, 476279, 1, 0.08,
+  73, 458484, 1, 0.08,
+  74, 445259, 1, 0.08,
+  75, 431429, 1, 0.08,
+  76, 433618, 1, 0.08,
+  77, 433515, 1, 0.08,
+  78, 419602, 1, 0.08,
+  79, 284208, 1, 0.08,
+  80, 244002, 1, 0.148,
+  81, 252357, 1, 0.148,
+  82, 248742, 1, 0.148,
+  83, 242710, 1, 0.148,
+  84, 221012, 1, 0.148,
+  85, 1079747, 1, 0.148
 };
 
 #define Age(_i_)                (age_data[(_i_)*4 + 0])
@@ -348,6 +350,7 @@ int main(int argc, char **argv) {
 
   population_grid_t population = {1024 * 1024, 1024, 1024};
   counts_t counts = {0, 0, 0, 0, 0, 0, 0};
+  counts_t previous_counts = {0, 0, 0, 0, 0, 0, 0};
 
   while (1) {
     int option_index = 0;
@@ -484,6 +487,8 @@ int main(int argc, char **argv) {
   counts.incubating = starting_cases;
   counts.susceptible = population.population_size - starting_cases;
 
+  unsigned int stable_days = 0;
+  
   printf("Day,Susceptible,Incubating,Carrying,Ill,Recovered,Vaccinated,Died\n");
 
   for (int day = 0; day < cycles; day++) {
@@ -526,10 +531,15 @@ int main(int argc, char **argv) {
               /* TODO: check against a distribution of days in this state */
               population.population[i].days_in_state++;
               if (population.population[i].days_in_state > ill_days) {
-                  population.population[i].state = RECOVERED; /* TODO: possibility that they will die instead */
                   population.population[i].days_in_state = 0;
                   counts.ill--;
-                  counts.recovered++;
+                  if (drand48() < Age_Mortality(population.population[i].age)) {
+                      population.population[i].state = DIED;
+                      counts.died++;
+                  } else {
+                      population.population[i].state = RECOVERED;
+                      counts.recovered++;
+                  }
               } else {
                   infect(i, &population, &counts);
               }
@@ -546,5 +556,23 @@ int main(int argc, char **argv) {
 	     day,
 	     counts.susceptible, counts.incubating, counts.carrying, counts.ill,
 	     counts.recovered, counts.vaccinated, counts.died);
+
+
+      if (counts.susceptible == previous_counts.susceptible
+          && counts.incubating == previous_counts.incubating
+          && counts.carrying == previous_counts.carrying
+          && counts.ill == previous_counts.ill
+          && counts.recovered == previous_counts.recovered
+          && counts.vaccinated == previous_counts.vaccinated
+          && counts.died == previous_counts.died) {
+          stable_days++;
+          if (stable_days > infectious_days) {
+              printf("Equilibrium reached\n");
+              break;
+          }
+      } else {
+          stable_days = 0;
+      }
+      previous_counts = counts;
   }
 }
