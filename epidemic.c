@@ -9,6 +9,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <time.h>
+#include <string.h>
 
 /* We can build a tree of who was infected by who; but we don't yet
    have any way of reading this data out, so I've turned it off for
@@ -392,17 +393,41 @@ int main(int argc, char **argv) {
         cycles = atoi(optarg);
         break;
     case 'h':
-      print_usage();
-      exit(0);
+        print_usage();
+        exit(0);
     case 'i':
         infectious_days = atoi(optarg);
         break;
     case 's':
-      starting_cases = atoi(optarg);
-      break;
+        starting_cases = atoi(optarg);
+        switch (optarg[strlen(optarg)-1]) {
+        case 'k':
+        case 'K':
+            starting_cases *= 1024;
+            break;
+        case 'm':
+        case 'M':
+            starting_cases *= 1024 * 1024;
+            break;
+        }
+        break;
     case 'p':
-      population.population_size = atoi(optarg);
-      break;
+        population.population_size = atoi(optarg);
+        switch (optarg[strlen(optarg)-1]) {
+        case 'k':
+        case 'K':
+            population.population_size *= 1024;
+            break;
+        case 'm':
+        case 'M':
+            population.population_size *= 1024 * 1024;
+            break;
+        case 'g':
+        case 'G':
+            population.population_size *= 1024 * 1024 * 1024;
+            break;
+        }
+        break;
     case 'R':
         reproduction_rate = atof(optarg);
         break;
@@ -413,8 +438,8 @@ int main(int argc, char **argv) {
         outstream = fopen(optarg, "w");
         break;
     case 'v':
-      verbose = 1;
-      break;
+        verbose = 1;
+        break;
     }
   }
 
