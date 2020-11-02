@@ -17,6 +17,13 @@
    person, of course, so this may not be that useful. */
 // #define TRACING 1
 
+/* Output PNG files to show the spread */
+// #define PRODUCE_IMAGES 1
+
+#ifdef PRODUCE_IMAGES
+#include <png.h>
+#endif
+
 /* Definitions for the bitfield sizes which also have other things
    based on them, so they can be changed easily and be tracked by
    their dependents: */
@@ -45,7 +52,7 @@ typedef struct counts_t {
     unsigned int died;
 } counts_t;
 
-typedef struct population_grid_t {
+typedef struct opopulation_grid_t {
     unsigned int population_size;
     unsigned int grid_width;
     unsigned int grid_height;
@@ -183,7 +190,7 @@ static double default_spreader_data[] = {
 #define Spreader_R(_i_)          (spreader_data[(_i_)*4 + 2])
 #define Spreader_Radius(_i_)     (spreader_data[(_i_)*4 + 3])
 
-static const char *short_options = "a:c:g:hi:I:o:p:R:s:v";
+static const char *short_options = "a:c:g:hi:I:o:p:P:R:s:v";
 
 struct option long_options_data[] = {
   {"age", required_argument, 0, 'a'},
@@ -191,6 +198,7 @@ struct option long_options_data[] = {
   {"grades", required_argument, 0, 'g'},
   {"help", no_argument, 0, 'h'},
   {"population", required_argument, 0, 'p'},
+  {"pictures", required_argument, 0, 'P'},
   {"reproduction", required_argument, 0, 'R'},
   {"starting", required_argument, 0, 's'},
   {"infectious", required_argument, 0, 'i'},
@@ -361,6 +369,109 @@ static void infect(unsigned int who, population_grid_t *population, counts_t *co
 #define Intervention_Radius(_i_, _j_)  (interventions_data[(_i_) * interventions_columns + 2 + (2*(_j_) + 1)])
 #define Intervention_Grades()          ((interventions_columns - 2) / 2)
 
+#ifdef PRODUCE_IMAGES
+
+static unsigned int RGBs[8][3] = {
+    {127,127,126}, // NOBODY      0
+    {255,255,255}, // SUSCEPTIBLE 1
+    {255,105,180}, // INCUBATING  2
+    {255,165,0}, // CARRYING    3
+    {255,0,0}, // ILL         4
+    {0,255,0}, // RECOVERED   5
+    {0,0,255}, // VACCINATED  6
+    {0,0,0}, // DIED        7
+};
+
+/* based on http://www.labbookpages.co.uk/software/imgProc/files/libPNG/makePNG.c */
+
+int writeImage(char* filename,
+               population_grid_t *grid,
+               char* title)
+{
+        int code = 0;
+        FILE *fp = NULL;
+        png_structp png_ptr = NULL;
+        png_infop info_ptr = NULL;
+        png_bytep row = NULL;
+        
+        // Open file for writing (binary mode)
+        fp = fopen(filename, "wb");
+        if (fp == NULL) {
+                fprintf(stderr, "Could not open file %s for writing\n", filename);
+                code = 1;
+                goto finalise;
+        }
+
+        // Initialize write structure
+        png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+        if (png_ptr == NULL) {
+                fprintf(stderr, "Could not allocate write struct\n");
+                code = 1;
+                goto finalise;
+        }
+
+        // Initialize info structure
+        info_ptr = png_create_info_struct(png_ptr);
+        if (info_ptr == NULL) {
+                fprintf(stderr, "Could not allocate info struct\n");
+                code = 1;
+                goto finalise;
+        }
+
+        // Setup Exception handling
+        if (setjmp(png_jmpbuf(png_ptr))) {
+                fprintf(stderr, "Error during png creation\n");
+                code = 1;
+                goto finalise;
+        }
+
+        png_init_io(png_ptr, fp);
+
+        // Write header (8 bit colour depth)
+        png_set_IHDR(png_ptr, info_ptr, grid->grid_width, grid->grid_height,
+                        8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+                        PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+        // Set title
+        if (title != NULL) {
+                png_text title_text;
+                title_text.compression = PNG_TEXT_COMPRESSION_NONE;
+                title_text.key = "Title";
+                title_text.text = title;
+                png_set_text(png_ptr, info_ptr, &title_text, 1);
+        }
+
+        png_write_info(png_ptr, info_ptr);
+
+        // Allocate memory for one row (3 bytes per pixel - RGB)
+        row = (png_bytep) malloc(3 * grid->grid_width * sizeof(png_byte));
+
+        // Write image data
+        int x, y;
+        for (y=0 ; y<grid->grid_height ; y++) {
+                for (x=0 ; x<grid->grid_width ; x++) {
+                    png_byte *ptr = &(row[x*3]);
+                    unsigned int *colour = RGBs[grid->population[y*grid->grid_width + x].state % 8];
+                    ptr[0] = colour[0];
+                    ptr[1] = colour[1];
+                    ptr[2] = colour[2];
+                }
+                png_write_row(png_ptr, row);
+        }
+
+        // End write
+        png_write_end(png_ptr, NULL);
+
+        finalise:
+        if (fp != NULL) fclose(fp);
+        if (info_ptr != NULL) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
+        if (png_ptr != NULL) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+        if (row != NULL) free(row);
+
+        return code;
+}
+#endif
+
 int main(int argc, char **argv) {
   int verbose = 0;
   int cycles = 365;
@@ -379,7 +490,11 @@ int main(int argc, char **argv) {
   counts_t previous_counts = {0, 0, 0, 0, 0, 0, 0};
 
   FILE *outstream = stdout;
-
+#ifdef PRODUCE_IMAGES
+  char *image_filename_format = "day-%03d.png";
+  char *image_filename_buffer;
+  char title_buffer[16];
+#endif
   clock_t begin = clock();
   
   while (1) {
@@ -436,6 +551,13 @@ int main(int argc, char **argv) {
             break;
         }
         break;
+    case 'P':
+#ifdef PRODUCE_IMAGES
+        image_filename_format = optarg;
+#else
+        fprintf(stderr, "Image output not compiled into this version\n");
+#endif
+        break;
     case 'R':
         reproduction_rate = atof(optarg);
         break;
@@ -454,6 +576,10 @@ int main(int argc, char **argv) {
     }
   }
 
+#ifdef PRODUCE_IMAGES
+  image_filename_buffer = (char*)malloc(strlen(image_filename_format + 4));
+#endif
+  
   /* Read the spreader grades.
      The columns are:
      * The grade number
@@ -654,6 +780,13 @@ int main(int argc, char **argv) {
               counts.susceptible, counts.incubating, counts.carrying, counts.ill,
               counts.recovered, counts.vaccinated, counts.died);
 
+#ifdef PRODUCE_IMAGES
+      sprintf(image_filename_buffer, image_filename_format, day);
+      sprintf(title_buffer, "Day %d", day);
+      writeImage(image_filename_buffer,
+                 &population,
+                 title_buffer);
+#endif
 
       if (counts.susceptible == previous_counts.susceptible
           && counts.incubating == previous_counts.incubating
