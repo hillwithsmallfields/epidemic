@@ -52,7 +52,7 @@ typedef struct counts_t {
     unsigned int died;
 } counts_t;
 
-typedef struct opopulation_grid_t {
+typedef struct population_grid_t {
     unsigned int population_size;
     unsigned int grid_width;
     unsigned int grid_height;
