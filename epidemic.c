@@ -33,7 +33,7 @@
    them on a fairly ordinary machine. */
 typedef struct person_t {
   unsigned int days_in_state  : 10;
-  unsigned int state          : 3;
+  unsigned int state          : 4;
   unsigned int spreader_grade : SPREADER_GRADE_BITS;
   unsigned int age            : 7;
 #ifdef TRACING
@@ -45,6 +45,7 @@ typedef struct person_t {
 typedef struct counts_t {
     unsigned int susceptible;
     unsigned int incubating;
+    unsigned int asymptomatic;
     unsigned int carrying;
     unsigned int ill;
     unsigned int recovered;
@@ -60,14 +61,17 @@ typedef struct population_grid_t {
 } population_grid_t;
 
 /* The possible values for the 'state' field: */
-#define NOBODY      0
-#define SUSCEPTIBLE 1
-#define INCUBATING  2
-#define CARRYING    3
-#define ILL         4
-#define RECOVERED   5
-#define VACCINATED  6
-#define DIED        7
+typedef enum state {
+    NOBODY,
+    SUSCEPTIBLE,
+    INCUBATING,
+    ASYMPTOMATIC,
+    CARRYING,
+    ILL,
+    RECOVERED,
+    VACCINATED,
+    DIED
+} state_t;
 
 /* Treating the population array as a two-dimensional grid, for
    purposes of who is near who (and so who can be infected by who): */
@@ -480,6 +484,7 @@ int main(int argc, char **argv) {
   unsigned int incubation_days = 2;
   unsigned int carrying_days = 5;
   unsigned int ill_days = 10;
+  unsigned int asymptomatic_days = 20;
 
   char *spreader_grades_file = NULL;
   char *age_distribution_file = NULL;
@@ -732,10 +737,15 @@ int main(int argc, char **argv) {
               population.population[i].days_in_state++;
               /* TODO: check against a distribution of days in this state */
               if (population.population[i].days_in_state > incubation_days) {
-                  population.population[i].state = CARRYING;
+                  int asymptomatic = 0; /* TODO: derive this from random and the spreader grade */
+                  population.population[i].state = asymptomatic ? CARRYING : ASYMPTOMATIC;
                   population.population[i].days_in_state = 0;
                   counts.incubating--;
-                  counts.carrying++;
+                  if (asymptomatic) {
+                      counts.asymptomatic++;
+                  } else {
+                      counts.carrying++;
+                  }
               }
               break;
           case CARRYING:
@@ -763,6 +773,18 @@ int main(int argc, char **argv) {
                       population.population[i].state = RECOVERED;
                       counts.recovered++;
                   }
+              } else {
+                  infect(i, &population, &counts);
+              }
+              break;
+          case ASYMPTOMATIC:
+              /* TODO: check against a distribution of days in this state */
+              population.population[i].days_in_state++;
+              if (population.population[i].days_in_state > asymptomatic_days) {
+                  population.population[i].days_in_state = 0;
+                  counts.asymptomatic--;
+                  population.population[i].state = RECOVERED;
+                  counts.recovered++;
               } else {
                   infect(i, &population, &counts);
               }
