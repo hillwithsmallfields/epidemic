@@ -62,7 +62,7 @@ typedef struct population_grid_t {
 
 /* The possible values for the 'state' field: */
 typedef enum state {
-    NOBODY,
+    NOBODY = 0,
     SUSCEPTIBLE,
     INCUBATING,
     ASYMPTOMATIC,
@@ -376,14 +376,15 @@ static void infect(unsigned int who, population_grid_t *population, counts_t *co
 #ifdef PRODUCE_IMAGES
 
 static unsigned int RGBs[8][3] = {
-    {127,127,126}, // NOBODY      0
-    {255,255,255}, // SUSCEPTIBLE 1
-    {255,105,180}, // INCUBATING  2
-    {255,165,0}, // CARRYING    3
-    {255,0,0}, // ILL         4
-    {0,255,0}, // RECOVERED   5
-    {0,0,255}, // VACCINATED  6
-    {0,0,0}, // DIED        7
+    {127,127,126}, // NOBODY       0
+    {255,255,255}, // SUSCEPTIBLE  1
+    {255,105,180}, // INCUBATING   2
+    {127,127,127}, // ASYMPTOMATIC 3
+    {255,165,0},   // CARRYING     4
+    {255,0,0},     // ILL          5
+    {0,255,0},     // RECOVERED    6
+    {0,0,255},     // VACCINATED   7
+    {0,0,0},       // DIED         8
 };
 
 /* based on http://www.labbookpages.co.uk/software/imgProc/files/libPNG/makePNG.c */
@@ -742,7 +743,7 @@ int main(int argc, char **argv) {
                   population.population[i].days_in_state = 0;
                   counts.incubating--;
                   if (asymptomatic) {
-                      counts.asymptomatic++;
+M4ck3r3lEmacsLuleshtrydhe                      counts.asymptomatic++;
                   } else {
                       counts.carrying++;
                   }
